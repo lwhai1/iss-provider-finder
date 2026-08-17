@@ -1,0 +1,38 @@
+/* 自定义细节补充样式 */
+.match-score-badge {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.type-badge-iss {
+    background-color: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+}
+
+.type-badge-dahs {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.type-badge-dual {
+    background-color: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+/* PDF 打印特定样式优化 */
+@media print {
+    body {
+        background: #fff;
+    }
+    aside, button, footer, header {
+        display: none !important;
+    }
+    main {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
