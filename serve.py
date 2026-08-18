@@ -1,24 +1,21 @@
 import http.server
 import socketserver
 import os
+import webbrowser
 
 PORT = 8000
 
-class CustomHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Expires', '0')
-        super().end_headers()
+class Handler(http.server.SimpleHTTPRequestHandler):
+    pass
 
-if __name__ == "__main__":
-    web_dir = os.path.dirname(__file__)
-    if web_dir:
-        os.chdir(web_dir)
-        
-    with socketserver.TCPServer(("", PORT), CustomHandler) as httpd:
-        print(f"服务已启动: http://localhost:{PORT}")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\n服务已停止")
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+print(f"🚀 特需儿童/DAHS-ISS Provider 智能筛选工具启动中...")
+print(f"🌐 请在浏览器中打开: http://localhost:{PORT}")
+
+try:
+    webbrowser.open(f"http://localhost:{PORT}")
+    with socketserver.TCPServer(("", PORT), Handler) as httpd:
+        httpd.serve_forever()
+except KeyboardInterrupt:
+    print("\n服务已停止。")

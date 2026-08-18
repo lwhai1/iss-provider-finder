@@ -1,39 +1,152 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>机构筛选器</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>德州特需儿童及日间照料机构(DAHS/ISS)智能筛选匹配器</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+
+  <!-- 头部 Hero -->
+  <header class="hero">
     <div class="container">
-        <header>
-            <h1>机构筛选器</h1>
-            <p class="subtitle">输入5位邮编查询周边服务机构</p>
-        </header>
-
-        <section class="filter-section">
-            <div class="input-group">
-                <label for="zipInput">邮政编码 (ZIP Code)：</label>
-                <input 
-                    type="text" 
-                    id="zipInput" 
-                    placeholder="请输入5位数字邮编 (例如: 77001)" 
-                    maxLength="5"
-                    pattern="\d{5}"
-                >
-                <button id="searchBtn">查询</button>
-            </div>
-        </section>
-
-        <main class="results-section">
-            <div id="loading" class="hidden">加载中...</div>
-            <div id="stats" class="stats-info"></div>
-            <div id="cardsContainer" class="cards-grid"></div>
-        </main>
+      <div class="badge">Texas HHSC 官方持证机构数据库</div>
+      <h1>🧩 德州特需儿童及日间照料机构智能筛选匹配工具</h1>
+      <p class="subtitle">精准帮助家长快速匹配合适的传统 DAHS、DAHS-ISS 及 ISS-Only 社交与技能培训机构</p>
+      <div class="stats-bar">
+        <span>📊 机构总数：<strong id="totalCount">0</strong> 家</span>
+        <span>🔍 当前匹配：<strong id="matchCount">0</strong> 家</span>
+        <span>📅 数据更新于：2026年8月</span>
+      </div>
     </div>
+  </header>
 
-    <script src="app.js"></script>
+  <main class="container main-layout">
+
+    <!-- 左侧/上方：筛选面板 -->
+    <aside class="filter-card">
+      <div class="filter-header">
+        <h2>🔍 机构筛选器</h2>
+        <button id="resetBtn" class="btn-reset">重置所有条件</button>
+      </div>
+
+      <div class="filter-body">
+        
+        <!-- 关键词搜索 -->
+        <div class="filter-group">
+          <label for="f-search">🔤 机构名称 / 负责人 / 邮箱搜索</label>
+          <input type="text" id="f-search" placeholder="输入关键词，如 Center, Smith 等...">
+        </div>
+
+        <!-- 邮政编码 Zip Code -->
+        <div class="filter-group">
+          <label for="f-zip">📮 邮政编码 (Zip Code)</label>
+          <div class="zip-filter-container">
+            <select id="f-zip">
+              <option value="">全部 Zip Code</option>
+            </select>
+            <input type="text" id="f-zip-input" placeholder="或直接输入5位邮编..." maxlength="5" pattern="[0-9]*">
+          </div>
+        </div>
+
+        <!-- 地区/县 (County) -->
+        <div class="filter-group">
+          <label for="f-county">📍 所在县 (County)</label>
+          <select id="f-county">
+            <option value="">全部 County</option>
+          </select>
+        </div>
+
+        <!-- 城市 (City) -->
+        <div class="filter-group">
+          <label for="f-city">🏙️ 所在城市 (City)</label>
+          <select id="f-city">
+            <option value="">全部 City</option>
+          </select>
+        </div>
+
+        <!-- 项目类型 (Program Type) -->
+        <div class="filter-group">
+          <label for="f-program">🏷️ 服务类型 (Program Type)</label>
+          <select id="f-program">
+            <option value="">全部类型 (DAHS / ISS / ISS-Only)</option>
+            <option value="DAHS">DAHS (传统日间照料与健康服务)</option>
+            <option value="DAHS-ISS">DAHS-ISS (日间照料 + 独立技能与社交)</option>
+            <option value="DAHS-ISSONLY">DAHS-ISSONLY (专项 ISS 社交技能中心)</option>
+          </select>
+        </div>
+
+        <!-- 机构类型 (Type of Entity) -->
+        <div class="filter-group">
+          <label for="f-entity">🏢 机构运营性质 (Entity Type)</label>
+          <select id="f-entity">
+            <option value="">全部机构性质</option>
+          </select>
+        </div>
+
+        <!-- 容纳能力 (Capacity) -->
+        <div class="filter-group">
+          <label for="f-min-capacity">👥 最小核定服务容量 (Min Capacity)</label>
+          <input type="number" id="f-min-capacity" placeholder="如: 30" min="0">
+        </div>
+
+        <!-- 联系方式筛选 -->
+        <div class="filter-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="f-has-email">
+            <span>仅显示提供官方 E-mail 的机构</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="f-has-phone">
+            <span>仅显示提供电话联系方式的机构</span>
+          </label>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- 右侧：匹配结果展示 -->
+    <section class="results-section">
+
+      <div class="results-toolbar">
+        <div class="toolbar-info">
+          已为您精选 <span id="resultsCount" class="highlight-count">0</span> 家符合条件的 Provider
+        </div>
+        <div class="sort-box">
+          <label for="f-sort">排序方式：</label>
+          <select id="f-sort">
+            <option value="name_asc">机构名称 (A-Z)</option>
+            <option value="capacity_desc">核定容量 (从大到小)</option>
+            <option value="county_asc">按 County 字母序</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 机构卡片列表 -->
+      <div id="resultsList" class="results-grid">
+        <!-- JS 动态渲染 -->
+      </div>
+
+      <!-- 空状态 -->
+      <div id="noResults" class="no-results hidden">
+        <div class="no-results-icon">🔍</div>
+        <h3>未找到符合条件的机构</h3>
+        <p>建议放宽筛选条件，或重置筛选器重新寻找。</p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>德州特需儿童与日间照料机构(DAHS/ISS)服务匹配系统 · Texas HHSC Directory Matcher</p>
+      <p class="small">所有持证信息均与 Texas Health and Human Services Commission (HHSC) 官方许可目录保持一致。</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
 </body>
 </html>
