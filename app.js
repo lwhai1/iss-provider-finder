@@ -29,16 +29,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// 初始化 County, City, Entity 类型下拉选项
+// 初始化 County, City, Zip, Entity 类型下拉选项
 function initDropdowns(data) {
   const counties = new Set();
   const cities = new Set();
   const entities = new Set();
+  const zips = new Set();
 
   data.forEach(item => {
     if (item.county) counties.add(item.county.trim());
     if (item.city) cities.add(item.city.trim());
     if (item.entity_type) entities.add(item.entity_type.trim());
+    if (item.zip) zips.add(item.zip.trim());
   });
 
   const countySelect = document.getElementById('f-county');
@@ -57,6 +59,14 @@ function initDropdowns(data) {
     citySelect.appendChild(opt);
   });
 
+  const zipSelect = document.getElementById('f-zip');
+  [...zips].sort().forEach(z => {
+    const opt = document.createElement('option');
+    opt.value = z;
+    opt.textContent = z;
+    zipSelect.appendChild(opt);
+  });
+
   const entitySelect = document.getElementById('f-entity');
   [...entities].sort().forEach(e => {
     const opt = document.createElement('option');
@@ -68,86 +78,38 @@ function initDropdowns(data) {
 
 // 绑定筛选事件
 function bindEvents() {
-  const filterInputs = [
-    'f-search', 'f-county', 'f-city', 'f-program',
-    'f-entity', 'f-min-capacity', 'f-has-email', 'f-has-phone', 'f-sort'
+  const inputs = [
+    'f-search', 'f-county', 'f-city', 'f-zip', 'f-zip-input',
+    'f-program', 'f-entity', 'f-min-capacity',
+    'f-has-email', 'f-has-phone', 'f-sort'
   ];
 
-  filterInputs.forEach(id => {
+  inputs.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', applyFilters);
-      el.addEventListener('change', applyFilters);
+      const evt = el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input';
+      el.addEventListener(evt, () => {
+        // Zip select 与 Zip input 交互联动
+        if (id === 'f-zip' && el.value) {
+          document.getElementById('f-zip-input').value = '';
+        } else if (id === 'f-zip-input' && el.value) {
+          document.getElementById('f-zip').value = '';
+        }
+        applyFilters();
+      });
     }
   });
 
   document.getElementById('resetBtn').addEventListener('click', resetFilters);
 }
 
-// 执行筛选逻辑
-function applyFilters() {
-  const searchStr = document.getElementById('f-search').value.toLowerCase().trim();
-  const selectedCounty = document.getElementById('f-county').value;
-  const selectedCity = document.getElementById('f-city').value;
-  const selectedProgram = document.getElementById('f-program').value;
-  const selectedEntity = document.getElementById('f-entity').value;
-  const minCap = parseInt(document.getElementById('f-min-capacity').value, 10) || 0;
-  const mustHaveEmail = document.getElementById('f-has-email').checked;
-  const mustHavePhone = document.getElementById('f-has-phone').checked;
-  const sortMode = document.getElementById('f-sort').value;
-
-  FILTERED_DATA = ALL_DATA.filter(item => {
-    // 文本模糊匹配
-    if (searchStr) {
-      const nameMatch = item.name.toLowerCase().includes(searchStr);
-      const adminMatch = item.admin.toLowerCase().includes(searchStr);
-      const emailMatch = item.email.toLowerCase().includes(searchStr);
-      if (!nameMatch && !adminMatch && !emailMatch) return false;
-    }
-
-    // County 匹配
-    if (selectedCounty && item.county !== selectedCounty) return false;
-
-    // City 匹配
-    if (selectedCity && item.city !== selectedCity) return false;
-
-    // Program 匹配
-    if (selectedProgram && item.program_type !== selectedProgram) return false;
-
-    // Entity 匹配
-    if (selectedEntity && item.entity_type !== selectedEntity) return false;
-
-    // 容量匹配
-    const capNum = parseInt(item.capacity, 10) || 0;
-    if (minCap > 0 && capNum < minCap) return false;
-
-    // 联系方式过滤
-    if (mustHaveEmail && !item.email) return false;
-    if (mustHavePhone && !item.phone) return false;
-
-    return true;
-  });
-
-  // 排序
-  FILTERED_DATA.sort((a, b) => {
-    if (sortMode === 'name_asc') {
-      return a.name.localeCompare(b.name);
-    } else if (sortMode === 'capacity_desc') {
-      return (parseInt(b.capacity, 10) || 0) - (parseInt(a.capacity, 10) || 0);
-    } else if (sortMode === 'county_asc') {
-      return a.county.localeCompare(b.county);
-    }
-    return 0;
-  });
-
-  renderResults(FILTERED_DATA);
-}
-
-// 重置条件
+// 重置筛选条件
 function resetFilters() {
   document.getElementById('f-search').value = '';
   document.getElementById('f-county').value = '';
   document.getElementById('f-city').value = '';
+  document.getElementById('f-zip').value = '';
+  document.getElementById('f-zip-input').value = '';
   document.getElementById('f-program').value = '';
   document.getElementById('f-entity').value = '';
   document.getElementById('f-min-capacity').value = '';
@@ -158,15 +120,95 @@ function resetFilters() {
   applyFilters();
 }
 
-// 渲染结果
-function renderResults(list) {
+// 应用筛选过滤逻辑
+function applyFilters() {
+  const search = document.getElementById('f-search').value.trim().toLowerCase();
+  const county = document.getElementById('f-county').value;
+  const city = document.getElementById('f-city').value;
+  const zipSel = document.getElementById('f-zip').value;
+  const zipInput = document.getElementById('f-zip-input').value.trim();
+  const zipVal = zipSel || zipInput;
+  const program = document.getElementById('f-program').value;
+  const entity = document.getElementById('f-entity').value;
+  const minCap = parseInt(document.getElementById('f-min-capacity').value, 10) || 0;
+  const hasEmail = document.getElementById('f-has-email').checked;
+  const hasPhone = document.getElementById('f-has-phone').checked;
+  const sort = document.getElementById('f-sort').value;
+
+  FILTERED_DATA = ALL_DATA.filter(item => {
+    // 搜索词过滤
+    if (search) {
+      const nameMatch = (item.name || '').toLowerCase().includes(search);
+      const adminMatch = (item.admin || '').toLowerCase().includes(search);
+      const emailMatch = (item.email || '').toLowerCase().includes(search);
+      const ownerMatch = (item.owner || '').toLowerCase().includes(search);
+      if (!nameMatch && !adminMatch && !emailMatch && !ownerMatch) return false;
+    }
+
+    // County 过滤
+    if (county && (item.county || '').trim() !== county) return false;
+
+    // City 过滤
+    if (city && (item.city || '').trim() !== city) return false;
+
+    // Zip Code 过滤
+    if (zipVal && !(item.zip || '').trim().includes(zipVal)) return false;
+
+    // Program 过滤
+    if (program) {
+      if (program === 'DAHS' && item.program_type !== 'DAHS') return false;
+      if (program === 'DAHS-ISS' && item.program_type !== 'DAHS-ISS') return false;
+      if (program === 'DAHS-ISSONLY' && item.program_type !== 'DAHS-ISSONLY') return false;
+    }
+
+    // Entity 性质过滤
+    if (entity && (item.entity_type || '').trim() !== entity) return false;
+
+    // 容量过滤
+    const cap = parseInt(item.capacity, 10) || 0;
+    if (minCap > 0 && cap < minCap) return false;
+
+    // Email / Phone 包含过滤
+    if (hasEmail && (!item.email || !item.email.trim())) return false;
+    if (hasPhone && (!item.phone || !item.phone.trim())) return false;
+
+    return true;
+  });
+
+  // 排序逻辑
+  sortData(sort);
+
+  // 渲染视图
+  renderResults();
+}
+
+// 排序
+function sortData(sortType) {
+  FILTERED_DATA.sort((a, b) => {
+    if (sortType === 'name_asc') {
+      return (a.name || '').localeCompare(b.name || '');
+    } else if (sortType === 'capacity_desc') {
+      const capA = parseInt(a.capacity, 10) || 0;
+      const capB = parseInt(b.capacity, 10) || 0;
+      return capB - capA;
+    } else if (sortType === 'county_asc') {
+      return (a.county || '').localeCompare(b.county || '');
+    }
+    return 0;
+  });
+}
+
+// 渲染机构卡片
+function renderResults() {
   const container = document.getElementById('resultsList');
   const noResults = document.getElementById('noResults');
+  const countEl = document.getElementById('resultsCount');
+  const matchCountEl = document.getElementById('matchCount');
 
-  document.getElementById('matchCount').textContent = list.length;
-  document.getElementById('resultsCount').textContent = list.length;
+  countEl.textContent = FILTERED_DATA.length;
+  matchCountEl.textContent = FILTERED_DATA.length;
 
-  if (list.length === 0) {
+  if (FILTERED_DATA.length === 0) {
     container.innerHTML = '';
     noResults.classList.remove('hidden');
     return;
@@ -174,39 +216,83 @@ function renderResults(list) {
 
   noResults.classList.add('hidden');
 
-  container.innerHTML = list.map(item => {
-    const isIssOnly = item.program_type === 'DAHS-ISSONLY';
-    const tagClass = isIssOnly ? 'tag-program tag-issonly' : 'tag-program';
+  const htmlArray = FILTERED_DATA.map(item => {
+    // 标注 Badge 样式
+    let tagClass = 'tag-dahs';
+    let tagText = item.program_type || 'DAHS';
+    if (tagText === 'DAHS-ISS') {
+      tagClass = 'tag-iss';
+    } else if (tagText === 'DAHS-ISSONLY') {
+      tagClass = 'tag-issonly';
+      tagText = 'ISS-Only 专项社交中心';
+    }
 
-    const mapQuery = encodeURIComponent(`${item.name} ${item.address} ${item.city} TX ${item.zip}`);
+    const fullAddr = `${item.address || ''}, ${item.city || ''}, TX ${item.zip || ''}`.trim();
+    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name + ' ' + fullAddr)}`;
 
     return `
-      <div class="provider-card">
+      <article class="provider-card">
         <div class="card-header">
-          <div class="card-title">${escapeHtml(item.name)}</div>
-          <span class="${tagClass}">${item.program_type || 'DAHS/ISS'}</span>
+          <div>
+            <span class="badge-tag ${tagClass}">${tagText}</span>
+            <h3 class="card-title">${escapeHtml(item.name)}</h3>
+          </div>
         </div>
 
         <div class="card-details">
-          <div class="detail-item">📍 <strong>地址：</strong>${escapeHtml(item.address)}, ${escapeHtml(item.city)}, TX ${item.zip}</div>
-          <div class="detail-item">🏛️ <strong>所属 County：</strong>${escapeHtml(item.county)}</div>
-          <div class="detail-item">👤 <strong>负责人/Admin：</strong>${escapeHtml(item.admin || '暂未提供')}</div>
-          <div class="detail-item">👥 <strong>服务核定容量：</strong>${item.capacity || 'N/A'} 人</div>
-          <div class="detail-item">🆔 <strong>License No / ID：</strong>${item.license_no || item.id}</div>
-          <div class="detail-item">🏢 <strong>机构性质：</strong>${escapeHtml(item.entity_type || '其他')}</div>
+          <div class="detail-item">
+            <span class="icon">📍</span>
+            <span><strong>地址：</strong>${escapeHtml(item.address || '未提供')}, ${escapeHtml(item.city || '')}, TX ${escapeHtml(item.zip || '')} (${escapeHtml(item.county || '')} County)</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="icon">📞</span>
+            <span><strong>电话：</strong>${item.phone ? `<a href="tel:${item.phone}">${escapeHtml(item.phone)}</a>` : '未提供'}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="icon">✉️</span>
+            <span><strong>邮箱：</strong>${item.email ? `<a href="mailto:${item.email}">${escapeHtml(item.email)}</a>` : '未提供'}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="icon">👥</span>
+            <span><strong>核定服务容量：</strong><strong>${item.capacity || '未标注'}</strong> 人</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="icon">👤</span>
+            <span><strong>负责人：</strong>${escapeHtml(item.admin || '未提供')}</span>
+          </div>
+
+          <div class="detail-item">
+            <span class="icon">📜</span>
+            <span><strong>许可证编号：</strong>${escapeHtml(item.license_no || '暂无')}</span>
+          </div>
         </div>
 
         <div class="card-actions">
-          ${item.phone ? `<a href="tel:${item.phone}" class="action-btn btn-phone">📞 电话：${item.phone}</a>` : ''}
-          ${item.email ? `<a href="mailto:${item.email}" class="action-btn btn-email">✉️ 发邮件：${item.email}</a>` : ''}
-          <a href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" class="action-btn btn-map">🗺️ Google 地图导航</a>
+          <a href="${mapUrl}" target="_blank" rel="noopener" class="btn btn-outline">🗺️ Google 地图导航</a>
+          ${item.phone ? `<a href="tel:${item.phone}" class="btn btn-primary">📞 拨打电话</a>` : ''}
+          ${item.email ? `<a href="mailto:${item.email}" class="btn btn-secondary">✉️ 发送邮件</a>` : ''}
         </div>
-      </div>
+      </article>
     `;
-  }).join('');
+  });
+
+  container.innerHTML = htmlArray.join('');
 }
 
 function escapeHtml(str) {
   if (!str) return '';
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return str.replace(/[&<>"']/g, match => {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return map[match];
+  });
 }

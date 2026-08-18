@@ -40,6 +40,17 @@
           <input type="text" id="f-search" placeholder="输入关键词，如 Center, Smith 等...">
         </div>
 
+        <!-- 邮政编码 Zip Code -->
+        <div class="filter-group">
+          <label for="f-zip">📮 邮政编码 (Zip Code)</label>
+          <div class="zip-filter-container">
+            <select id="f-zip">
+              <option value="">全部 Zip Code</option>
+            </select>
+            <input type="text" id="f-zip-input" placeholder="或直接输入5位邮编..." maxlength="5" pattern="[0-9]*">
+          </div>
+        </div>
+
         <!-- 地区/县 (County) -->
         <div class="filter-group">
           <label for="f-county">📍 所在县 (County)</label>
